@@ -1,0 +1,88 @@
+const STATE_FILE = "state.json";
+const BOT_TOKEN = "<bot token here>";
+
+
+
+import f*, strcmp;
+const SEEK_SET = 0;
+const SEEK_END = 2;
+
+import Map from "libs/map.ptrs";
+import json_encode, json_decode from "libs/json.ptrs";
+import Telegram, MessageUpdate from "libs/telegram.ptrs";
+
+//var storage; TODO track how many bottles are left
+var accounts;
+
+scoped
+{
+	var fd = fopen(STATE_FILE, "r");
+	if(!fd)
+	{
+		accounts = new Map();
+	}
+	else
+	{
+		fseek(fd, 0, SEEK_END);
+		var size = ftell(fd);
+		fseek(fd, 0, SEEK_SET);
+
+		var content = new_stack array{size + 1};
+		fread(content, size, 1, fd);
+		fclose(fd);
+		content[size] = 0;
+
+		accounts = json_decode(content);
+	}
+}
+
+function saveState()
+{
+	var str = json_encode(accounts);
+	var fd = fopen(STATE_FILE, "w+");
+
+	fwrite(str, 1, (sizeof str) - 1, fd);
+	fputc('\n', fd);
+	fclose(fd);
+
+	delete str;
+}
+
+var bot = new Telegram(BOT_TOKEN);
+while(true)
+{
+	var msg = bot.getUpdate();
+	if(!(msg instanceof MessageUpdate))
+	{
+		delete msg;
+		continue;
+	}
+
+	if(strcmp(msg.text, "/drink") == 0)
+	{
+		if(msg.senderId in accounts)
+			accounts[msg.senderId] -= 1;
+		else
+			accounts[msg.senderId] = -1;
+
+		bot.sendMessage(msg.chat, "OK, enjoy your drink!");
+
+		saveState();
+	}
+	else if(strcmp(msg.text, "/balance") == 0)
+	{
+		var balance;
+		if(msg.senderId in accounts)
+			balance = accounts[msg.senderId];
+		else
+			balance = 0;
+
+		bot.sendMessage(msg.chat, "Your balance is: $balance€");
+	}
+	else if(strcmp(msg.text, "/pay") == 0)
+	{
+		bot.sendMessage(msg.chat, "Soon™");
+	}
+
+	delete msg;
+}
