@@ -3,7 +3,7 @@ const BOT_TOKEN = "<bot token here>";
 
 
 
-import f*, strcmp;
+import f*, str*;
 const SEEK_SET = 0;
 const SEEK_END = 2;
 
@@ -58,7 +58,7 @@ while(true)
 		continue;
 	}
 
-	if(strcmp(msg.text, "/drink") == 0)
+	if(strncmp(msg.text, "/drink", strlen("/drink")) == 0)
 	{
 		if(msg.senderId in accounts)
 			accounts[msg.senderId] -= 1;
@@ -69,7 +69,7 @@ while(true)
 
 		saveState();
 	}
-	else if(strcmp(msg.text, "/balance") == 0)
+	else if(strncmp(msg.text, "/balance", strlen("/balance")) == 0)
 	{
 		var balance;
 		if(msg.senderId in accounts)
@@ -79,7 +79,7 @@ while(true)
 
 		bot.sendMessage(msg.chat, "Your balance is: $balance€");
 	}
-	else if(strcmp(msg.text, "/pay") == 0)
+	else if(strncmp(msg.text, "/pay", strlen("/pay")) == 0)
 	{
 		bot.sendMessage(msg.chat, "Soon™");
 	}
