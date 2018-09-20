@@ -63,7 +63,7 @@ while(true)
 		{
 			accounts[msg.senderId] = map {
 				id: msg.senderId,
-				name: msg.sender,
+				name: strdup!native(msg.sender)[0 .. (sizeof msg.sender) + 1],
 				balance: 0
 			};
 		}
