@@ -11,7 +11,6 @@ import Map from "libs/map.ptrs";
 import json_encode, json_decode from "libs/json.ptrs";
 import Telegram, MessageUpdate from "libs/telegram.ptrs";
 
-//var storage; TODO track how many bottles are left
 var accounts;
 
 scoped
@@ -60,10 +59,16 @@ while(true)
 
 	if(strncmp(msg.text, "/drink", strlen("/drink")) == 0)
 	{
-		if(msg.senderId in accounts)
-			accounts[msg.senderId] -= 1;
-		else
-			accounts[msg.senderId] = -1;
+		if(!(msg.senderId in accounts))
+		{
+			accounts[msg.senderId] = map {
+				id: msg.senderId,
+				name: msg.sender,
+				balance: 0
+			};
+		}
+
+		accounts[msg.senderId].balance -= 1;
 
 		msg.reply("OK, enjoy your drink!");
 
@@ -73,11 +78,27 @@ while(true)
 	{
 		var balance;
 		if(msg.senderId in accounts)
-			balance = accounts[msg.senderId];
+			balance = accounts[msg.senderId].balance;
 		else
 			balance = 0;
 
 		msg.reply("Your balance is: $balance€");
+	}
+	else if(strncmp(msg.text, "/blame", strlen("/blame")) == 0)
+	{
+		var min = false;
+		foreach(_, user in accounts)
+		{
+			if(!min || min.balance >= user.balance)
+			{
+				min = user;
+			}
+		}
+
+		if(min)
+			msg.reply("It's [${min.name}](tg://user?id=${min.id})s turn to restock the Mate", "markdown");
+		else
+			msg.reply("No users yet, noone to blame!");
 	}
 	else if(strncmp(msg.text, "/pay", strlen("/pay")) == 0)
 	{
