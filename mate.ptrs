@@ -65,7 +65,7 @@ while(true)
 		else
 			accounts[msg.senderId] = -1;
 
-		bot.sendMessage(msg.chat, "OK, enjoy your drink!");
+		msg.reply("OK, enjoy your drink!");
 
 		saveState();
 	}
@@ -77,11 +77,11 @@ while(true)
 		else
 			balance = 0;
 
-		bot.sendMessage(msg.chat, "Your balance is: $balance€");
+		msg.reply("Your balance is: $balance€");
 	}
 	else if(strncmp(msg.text, "/pay", strlen("/pay")) == 0)
 	{
-		bot.sendMessage(msg.chat, "Soon™");
+		msg.reply("Soon™");
 	}
 
 	delete msg;
