@@ -4,7 +4,7 @@ const BOT_TOKEN = "<bot token here>";
 
 
 
-import puts, f*, str*, isnan, isinf;
+import f*, str*, puts, memcpy, isnan, isinf;
 const SEEK_SET = 0;
 const SEEK_END = 2;
 
@@ -38,6 +38,12 @@ scoped
 	}
 }
 
+function arraydup(str)
+{
+	var dup = new array{sizeof str};
+	memcpy(dup, str, sizeof str);
+	return dup;
+}
 function saveState()
 {
 	var str = json_encode(accounts);
@@ -51,11 +57,11 @@ function saveState()
 }
 function createUser(id, name)
 {
-	if(!(id in accounts[id]))
+	if(!(id in accounts))
 	{
 		accounts[id] = map {
 			id: id,
-			name: strdup!native(name)[0 .. (sizeof name) + 1],
+			name: arraydup(name),
 			balance: 0
 		};
 
@@ -91,27 +97,6 @@ function checkCommand(text, cmd, argptr)
 
 	return true;
 }
-function createCommunismKeyboard(communists)
-{
-	var keyboard = new InlineKeyboard(accounts.count + 1, (text, action) -> { delete text; });
-
-	var i = 0;
-	foreach(_, user in accounts)
-	{
-		var text;
-		if(communists.indexOf(user.id) == -1)
-			text = user.name;
-		else
-			text = "✔ ${user.name}";
-	
-		keyboard.addButton(i++, text, user.id);
-	}
-
-	keyboard.addButton(i, "OK");
-	keyboard.addButton(i, "CANCEL");
-
-	return keyboard;
-}
 
 var bot = new Telegram(BOT_TOKEN);
 while(true) try
@@ -120,10 +105,39 @@ while(true) try
 
 	if(msg instanceof CallbackQuery)
 	{
-		createUser(msg.message.senderId, msg.message.sender);
+		createUser(msg.senderId, msg.sender);
 
 		if(!communism)
 		{
+		}
+		else if(strcmp(msg.action, "JOIN / LEAVE") == 0)
+		{
+			var index = communism.communists.indexOf(msg.senderId);
+			if(index == -1)
+			{
+				communism.communists.add(msg.senderId);
+				msg.answer("You are now a communist");
+			}
+			else
+			{
+				communism.communists.splice(index, 1);
+				msg.answer("You are no longer a communist");
+			}
+
+			var text = "";
+			var ids = communism.communists;
+			if(ids.length != 0)
+			{
+				for(var i = 0; i < ids.length; i++)
+				{
+					text = "$text, ${accounts[ids[i]].name}";
+				}
+
+				text += 2;
+			}
+
+			text = "${communism.text}\nCommunists: $text";
+			bot.editMessage(msg.message.chat, msg.message.id, text, _, communism.keyboard);
 		}
 		else if(msg.senderId != communism.creator)
 		{
@@ -152,6 +166,8 @@ while(true) try
 			bot.editMessage(msg.message.chat, msg.message.id, text + 2);
 
 			delete communism.communists;
+			delete communism.keyboard;
+			delete communism.text;
 			delete communism;
 			communism = false;
 		}
@@ -159,29 +175,10 @@ while(true) try
 		{
 			bot.editMessage(msg.message.chat, msg.message.id, "Communism canceled");
 			delete communism.communists;
+			delete communism.keyboard;
+			delete communism.text;
 			delete communism;
 			communism = false;
-		}
-		else
-		{
-			var id = strtoll(msg.action, NULL, 10);
-			if(id == communism.creator)
-			{
-				msg.answer("You cannot remove yourself from communism");
-			}
-			else
-			{
-				var index = communism.communists.indexOf(id);
-				if(index == -1)
-					communism.communists.add(id);
-				else
-					communism.communists.splice(index, 1);
-
-				var keyboard = createCommunismKeyboard(communism.communists);
-				bot.editMessage(msg.message.chat, msg.message.id,
-					"Please select all communists", _, keyboard);
-				delete keyboard;
-			}
 		}
 	}
 	else if(msg instanceof MessageUpdate)
@@ -225,7 +222,8 @@ while(true) try
 			}
 			else
 			{
-				var amount = strtod!double(arg, NULL);
+				var comment = NULL;
+				var amount = strtod!double(arg, &comment);
 				if(amount < 0 || amount > MAX_COMMUNISM
 					|| isnan(amount) || isinf(amount))
 				{
@@ -236,14 +234,28 @@ while(true) try
 					var communists = new List();
 					communists.add(msg.senderId);
 
-					var keyboard = createCommunismKeyboard(communists);
-					var id = msg.reply("Please select all communists",
-						undefined, keyboard);
-					delete keyboard;
+					var keyboard = new InlineKeyboard(2);
+					keyboard.addButton(0, "JOIN / LEAVE");
+					keyboard.addButton(1, "OK");
+					keyboard.addButton(1, "CANCEL");
+
+					if(!comment || *comment == 0)
+						comment = "none";
+					else
+						comment = comment[0 .. sizeof arg - (comment - arg)];
+
+					var text = "Everyone who wants to join or leave ${msg.sender}' "
+							"communism can now click JOIN / LEAVE"
+						"\nAmount: ${amount}€"
+						"\nDescription: $comment";
+
+					msg.reply("$text\nCommunists: ${msg.sender}", undefined, keyboard);
 
 					communism = map {
 						creator: msg.senderId,
 						amount: amount,
+						text: arraydup(text),
+						keyboard: keyboard,
 						communists: communists
 					};
 				}
