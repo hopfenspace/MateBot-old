@@ -1,9 +1,10 @@
+const MAX_COMMUNISM = 50;
 const STATE_FILE = "state.json";
 const BOT_TOKEN = "<bot token here>";
 
 
 
-import puts, f*, str*;
+import puts, f*, str*, isnan, isinf;
 const SEEK_SET = 0;
 const SEEK_END = 2;
 
@@ -47,6 +48,19 @@ function saveState()
 	fclose(fd);
 
 	delete str;
+}
+function createUser(id, name)
+{
+	if(!(id in accounts[id]))
+	{
+		accounts[id] = map {
+			id: id,
+			name: strdup!native(name)[0 .. (sizeof name) + 1],
+			balance: 0
+		};
+
+		saveState();
+	}
 }
 function checkCommand(text, cmd, argptr)
 {
@@ -106,6 +120,8 @@ while(true) try
 
 	if(msg instanceof CallbackQuery)
 	{
+		createUser(msg.message.senderId, msg.message.sender);
+
 		if(!communism)
 		{
 		}
@@ -170,33 +186,19 @@ while(true) try
 	}
 	else if(msg instanceof MessageUpdate)
 	{
+		createUser(msg.senderId, msg.sender);
+
 		var arg;
 		if(checkCommand(msg.text, "/drink"))
 		{
-			if(!(msg.senderId in accounts))
-			{
-				accounts[msg.senderId] = map {
-					id: msg.senderId,
-					name: strdup!native(msg.sender)[0 .. (sizeof msg.sender) + 1],
-					balance: 0
-				};
-			}
-
 			accounts[msg.senderId].balance -= 1;
 
 			msg.reply("OK, enjoy your drink!");
-
 			saveState();
 		}
 		else if(checkCommand(msg.text, "/balance"))
 		{
-			var balance;
-			if(msg.senderId in accounts)
-				balance = accounts[msg.senderId].balance;
-			else
-				balance = 0;
-
-			msg.reply("Your balance is: $balance€");
+			msg.reply("Your balance is: ${accounts[msg.senderId].balance}€");
 		}
 		else if(checkCommand(msg.text, "/blame"))
 		{
@@ -209,10 +211,7 @@ while(true) try
 				}
 			}
 
-			if(min)
-				msg.reply("It's [${min.name}](tg://user?id=${min.id})s turn to restock the Mate", "markdown");
-			else
-				msg.reply("No users yet, noone to blame!");
+			msg.reply("It's [${min.name}](tg://user?id=${min.id})s turn to restock the Mate", "markdown");
 		}
 		else if(checkCommand(msg.text, "/communism", &arg))
 		{
@@ -226,20 +225,28 @@ while(true) try
 			}
 			else
 			{
-				var amount = strtoull(arg, NULL, 0);
-				var communists = new List();
-				communists.add(msg.senderId);
+				var amount = strtod!double(arg, NULL);
+				if(amount < 0 || amount > MAX_COMMUNISM
+					|| isnan(amount) || isinf(amount))
+				{
+					msg.reply("Invalid amount: $amount");
+				}
+				else
+				{
+					var communists = new List();
+					communists.add(msg.senderId);
 
-				var keyboard = createCommunismKeyboard(communists);
-				var id = msg.reply("Please select all communists",
-					undefined, keyboard);
-				delete keyboard;
+					var keyboard = createCommunismKeyboard(communists);
+					var id = msg.reply("Please select all communists",
+						undefined, keyboard);
+					delete keyboard;
 
-				communism = map {
-					creator: msg.senderId,
-					amount: amount,
-					communists: communists
-				};
+					communism = map {
+						creator: msg.senderId,
+						amount: amount,
+						communists: communists
+					};
+				}
 			}
 		}
 		else if(checkCommand(msg.text, "/pay"))
