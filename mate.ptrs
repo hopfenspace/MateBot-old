@@ -3,7 +3,7 @@ const BOT_TOKEN = "<bot token here>";
 
 
 
-import f*, str*;
+import puts, f*, str*;
 const SEEK_SET = 0;
 const SEEK_END = 2;
 
@@ -100,7 +100,7 @@ function createCommunismKeyboard(communists)
 }
 
 var bot = new Telegram(BOT_TOKEN);
-while(true)
+while(true) try
 {
 	var msg = bot.getUpdate();
 
@@ -249,4 +249,8 @@ while(true)
 	}
 
 	delete msg;
+}
+catch(err, trace)
+{
+	puts("$err\n$trace");
 }
