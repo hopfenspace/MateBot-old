@@ -7,11 +7,13 @@ import f*, str*;
 const SEEK_SET = 0;
 const SEEK_END = 2;
 
+import List from "libs/list.ptrs";
 import Map from "libs/map.ptrs";
 import json_encode, json_decode from "libs/json.ptrs";
-import Telegram, MessageUpdate from "libs/telegram.ptrs";
+import Telegram, MessageUpdate, InlineKeyboard, CallbackQuery from "libs/telegram.ptrs";
 
 var accounts;
+var communism = false;
 
 scoped
 {
@@ -75,63 +77,175 @@ function checkCommand(text, cmd, argptr)
 
 	return true;
 }
+function createCommunismKeyboard(communists)
+{
+	var keyboard = new InlineKeyboard(accounts.count + 1, (text, action) -> { delete text; });
+
+	var i = 0;
+	foreach(_, user in accounts)
+	{
+		var text;
+		if(communists.indexOf(user.id) == -1)
+			text = user.name;
+		else
+			text = "✔ ${user.name}";
+	
+		keyboard.addButton(i++, text, user.id);
+	}
+
+	keyboard.addButton(i, "OK");
+	keyboard.addButton(i, "CANCEL");
+
+	return keyboard;
+}
 
 var bot = new Telegram(BOT_TOKEN);
 while(true)
 {
 	var msg = bot.getUpdate();
-	if(!(msg instanceof MessageUpdate) || msg.chat != CHAT_ID)
-	{
-		delete msg;
-		continue;
-	}
 
-	if(checkCommand(msg.text, "/drink"))
+	if(msg instanceof CallbackQuery)
 	{
-		if(!(msg.senderId in accounts))
+		if(!communism)
 		{
-			accounts[msg.senderId] = map {
-				id: msg.senderId,
-				name: strdup!native(msg.sender)[0 .. (sizeof msg.sender) + 1],
-				balance: 0
-			};
 		}
-
-		accounts[msg.senderId].balance -= 1;
-
-		msg.reply("OK, enjoy your drink!");
-
-		saveState();
-	}
-	else if(checkCommand(msg.text, "/balance"))
-	{
-		var balance;
-		if(msg.senderId in accounts)
-			balance = accounts[msg.senderId].balance;
-		else
-			balance = 0;
-
-		msg.reply("Your balance is: $balance€");
-	}
-	else if(checkCommand(msg.text, "/blame"))
-	{
-		var min = false;
-		foreach(_, user in accounts)
+		else if(msg.senderId != communism.creator)
 		{
-			if(!min || min.balance >= user.balance)
+			msg.answer("You are not allowed to do that");
+		}
+		else if(strcmp(msg.action, "OK") == 0)
+		{
+			var count = communism.communists.length;
+			var split = cast<float>communism.amount / cast<float>count;
+
+			var ids = communism.communists;
+			var text = "";
+			for(var i = 0; i < ids.length; i++)
 			{
-				min = user;
+				var user = accounts[ids[i]];
+				user.balance -= split;
+				text = "$text, ${user.name}";
+			}
+
+			var creator = accounts[communism.creator];
+			creator.balance += communism.amount;
+			text = "$text payed $split€\n${creator.name} received ${communism.amount}€";
+
+			saveState();
+
+			bot.editMessage(msg.message.chat, msg.message.id, text + 2);
+
+			delete communism.communists;
+			delete communism;
+			communism = false;
+		}
+		else if(strcmp(msg.action, "CANCEL") == 0)
+		{
+			bot.editMessage(msg.message.chat, msg.message.id, "Communism canceled");
+			delete communism.communists;
+			delete communism;
+			communism = false;
+		}
+		else
+		{
+			var id = strtoll(msg.action, NULL, 10);
+			if(id == communism.creator)
+			{
+				msg.answer("You cannot remove yourself from communism");
+			}
+			else
+			{
+				var index = communism.communists.indexOf(id);
+				if(index == -1)
+					communism.communists.add(id);
+				else
+					communism.communists.splice(index, 1);
+
+				var keyboard = createCommunismKeyboard(communism.communists);
+				bot.editMessage(msg.message.chat, msg.message.id,
+					"Please select all communists", _, keyboard);
+				delete keyboard;
 			}
 		}
-
-		if(min)
-			msg.reply("It's [${min.name}](tg://user?id=${min.id})s turn to restock the Mate", "markdown");
-		else
-			msg.reply("No users yet, noone to blame!");
 	}
-	else if(checkCommand(msg.text, "/pay"))
+	else if(msg instanceof MessageUpdate)
 	{
-		msg.reply("Soon™");
+		var arg;
+		if(checkCommand(msg.text, "/drink"))
+		{
+			if(!(msg.senderId in accounts))
+			{
+				accounts[msg.senderId] = map {
+					id: msg.senderId,
+					name: strdup!native(msg.sender)[0 .. (sizeof msg.sender) + 1],
+					balance: 0
+				};
+			}
+
+			accounts[msg.senderId].balance -= 1;
+
+			msg.reply("OK, enjoy your drink!");
+
+			saveState();
+		}
+		else if(checkCommand(msg.text, "/balance"))
+		{
+			var balance;
+			if(msg.senderId in accounts)
+				balance = accounts[msg.senderId].balance;
+			else
+				balance = 0;
+
+			msg.reply("Your balance is: $balance€");
+		}
+		else if(checkCommand(msg.text, "/blame"))
+		{
+			var min = false;
+			foreach(_, user in accounts)
+			{
+				if(!min || min.balance >= user.balance)
+				{
+					min = user;
+				}
+			}
+
+			if(min)
+				msg.reply("It's [${min.name}](tg://user?id=${min.id})s turn to restock the Mate", "markdown");
+			else
+				msg.reply("No users yet, noone to blame!");
+		}
+		else if(checkCommand(msg.text, "/communism", &arg))
+		{
+			if(communism)
+			{
+				msg.reply("There is already a communism in progress");
+			}
+			else if(!arg)
+			{
+				msg.reply("Usage: /communism <amount>\nSplit a bill onto multiple people");
+			}
+			else
+			{
+				var amount = strtoull(arg, NULL, 0);
+				var communists = new List();
+				communists.add(msg.senderId);
+
+				var keyboard = createCommunismKeyboard(communists);
+				var id = msg.reply("Please select all communists",
+					undefined, keyboard);
+				delete keyboard;
+
+				communism = map {
+					creator: msg.senderId,
+					amount: amount,
+					communists: communists
+				};
+			}
+		}
+		else if(checkCommand(msg.text, "/pay"))
+		{
+			msg.reply("Soon™");
+		}
 	}
 
 	delete msg;
