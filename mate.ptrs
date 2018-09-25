@@ -46,18 +46,47 @@ function saveState()
 
 	delete str;
 }
+function checkCommand(text, cmd, argptr)
+{
+	var cmdlen = strlen(cmd);
+	if(strncmp(text, cmd, cmdlen) != 0
+		|| (text[cmdlen] != '@' && text[cmdlen] != ' ' && text[cmdlen] != 0))
+		return false;
+
+	if(argptr)
+	{
+		if(text[cmdlen] == '@')
+		{
+			var arg = strstr!native(text + cmdlen, " ");
+			if(arg != NULL)
+				*argptr = (arg + 1)[0 .. sizeof text - (arg - text) - 1];
+			else
+				*argptr = NULL;
+		}
+		else if(text[cmdlen] == 0)
+		{
+			*argptr = NULL;
+		}
+		else
+		{
+			*argptr = text + cmdlen;
+		}
+	}
+
+	return true;
+}
 
 var bot = new Telegram(BOT_TOKEN);
 while(true)
 {
 	var msg = bot.getUpdate();
-	if(!(msg instanceof MessageUpdate))
+	if(!(msg instanceof MessageUpdate) || msg.chat != CHAT_ID)
 	{
 		delete msg;
 		continue;
 	}
 
-	if(strncmp(msg.text, "/drink", strlen("/drink")) == 0)
+	if(checkCommand(msg.text, "/drink"))
 	{
 		if(!(msg.senderId in accounts))
 		{
@@ -74,7 +103,7 @@ while(true)
 
 		saveState();
 	}
-	else if(strncmp(msg.text, "/balance", strlen("/balance")) == 0)
+	else if(checkCommand(msg.text, "/balance"))
 	{
 		var balance;
 		if(msg.senderId in accounts)
@@ -84,7 +113,7 @@ while(true)
 
 		msg.reply("Your balance is: $balance€");
 	}
-	else if(strncmp(msg.text, "/blame", strlen("/blame")) == 0)
+	else if(checkCommand(msg.text, "/blame"))
 	{
 		var min = false;
 		foreach(_, user in accounts)
@@ -100,7 +129,7 @@ while(true)
 		else
 			msg.reply("No users yet, noone to blame!");
 	}
-	else if(strncmp(msg.text, "/pay", strlen("/pay")) == 0)
+	else if(checkCommand(msg.text, "/pay"))
 	{
 		msg.reply("Soon™");
 	}
