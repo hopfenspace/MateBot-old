@@ -97,6 +97,15 @@ function checkCommand(text, cmd, argptr)
 
 	return true;
 }
+function deleteCommunism()
+{
+	delete communism.communists;
+	delete communism.keyboard;
+	delete communism.comment;
+	delete communism.text;
+	delete communism;
+	communism = false;
+}
 
 var bot = new Telegram(BOT_TOKEN);
 while(true) try
@@ -126,7 +135,14 @@ while(true) try
 
 			var text = "";
 			var ids = communism.communists;
-			if(ids.length != 0)
+
+			if(ids.length == 0)
+			{
+				bot.editMessage(msg.message.chat, msg.message.id,
+					"Everyone left, the communism died");
+				deleteCommunism();
+			}
+			else
 			{
 				for(var i = 0; i < ids.length; i++)
 				{
@@ -134,10 +150,10 @@ while(true) try
 				}
 
 				text += 2;
-			}
 
-			text = "${communism.text}\nCommunists: $text";
-			bot.editMessage(msg.message.chat, msg.message.id, text, _, communism.keyboard);
+				text = "${communism.text}\nCommunists: $text";
+				bot.editMessage(msg.message.chat, msg.message.id, text, _, communism.keyboard);
+			}
 		}
 		else if(msg.senderId != communism.creator)
 		{
@@ -159,26 +175,19 @@ while(true) try
 
 			var creator = accounts[communism.creator];
 			creator.balance += communism.amount;
-			text = "$text payed $split€\n${creator.name} received ${communism.amount}€";
+			text = "$text payed $split€"
+				"\n${creator.name} received ${communism.amount}€"
+				"\nDescription: ${communism.comment}";
 
 			saveState();
 
 			bot.editMessage(msg.message.chat, msg.message.id, text + 2);
-
-			delete communism.communists;
-			delete communism.keyboard;
-			delete communism.text;
-			delete communism;
-			communism = false;
+			deleteCommunism();
 		}
 		else if(strcmp(msg.action, "CANCEL") == 0)
 		{
 			bot.editMessage(msg.message.chat, msg.message.id, "Communism canceled");
-			delete communism.communists;
-			delete communism.keyboard;
-			delete communism.text;
-			delete communism;
-			communism = false;
+			deleteCommunism();
 		}
 	}
 	else if(msg instanceof MessageUpdate)
@@ -255,6 +264,7 @@ while(true) try
 						creator: msg.senderId,
 						amount: amount,
 						text: arraydup(text),
+						comment: arraydup(comment),
 						keyboard: keyboard,
 						communists: communists
 					};
