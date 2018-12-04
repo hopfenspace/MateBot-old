@@ -1,5 +1,6 @@
 const MAX_COMMUNISM = 50;
 const STATE_FILE = "state.json";
+const LOG_FILE = "transactions.log";
 const BOT_TOKEN = "<bot token here>";
 
 
@@ -15,6 +16,7 @@ import Telegram, MessageUpdate, InlineKeyboard, CallbackQuery from "libs/telegra
 
 var accounts;
 var communism = false;
+var logFd = fopen(LOG_FILE, "a+");
 
 scoped
 {
@@ -54,6 +56,12 @@ function saveState()
 	fclose(fd);
 
 	delete str;
+}
+function createTransaction(user, diff, reason)
+{
+	fputs("${user.id} (${user.name}) : $diff€: $reason\n", logFd);
+	fflush(logFd);
+	user.balance += diff;
 }
 function createUser(id, name)
 {
@@ -169,12 +177,12 @@ while(true) try
 			for(var i = 0; i < ids.length; i++)
 			{
 				var user = accounts[ids[i]];
-				user.balance -= split;
+				createTransaction(user, -split, "communism");
 				text = "$text, ${user.name}";
 			}
 
 			var creator = accounts[communism.creator];
-			creator.balance += communism.amount;
+			createTransaction(creator, communism.amount, "communism");
 			text = "$text payed $split€"
 				"\n${creator.name} received ${communism.amount}€"
 				"\nDescription: ${communism.comment}";
@@ -197,7 +205,7 @@ while(true) try
 		var arg;
 		if(checkCommand(msg.text, "/drink"))
 		{
-			accounts[msg.senderId].balance -= 1;
+			createTransaction(accounts[msg.senderId], -1, "drink");
 
 			msg.reply("OK, enjoy your drink!");
 			saveState();
