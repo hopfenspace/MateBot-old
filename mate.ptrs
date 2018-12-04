@@ -124,7 +124,34 @@ while(true) try
 	{
 		createUser(msg.senderId, msg.sender);
 
-		if(!communism)
+		if(strncmp(msg.action, "pay", 3) == 0)
+		{
+			var user;
+			var amount = strtoll(msg.action + 3, &user, 10);
+			user = strtoll(user, NULL, 10);
+
+			if(amount <= 0 || amount > MAX_COMMUNISM)
+			{
+				msg.answer("Invalid amount!");
+			}
+			else if(!(user in accounts) || user == msg.senderId)
+			{
+				msg.answer("Invalid user!");
+			}
+			else
+			{
+				var sender = accounts[msg.senderId];
+				user = accounts[user];
+
+				createTransaction(sender, -amount, "sent to ${user.id}");
+				createTransaction(user, amount, "received from ${msg.senderId}");
+				saveState();
+
+				var text = "${sender.name} sent ${amount / 100f}€ to ${user.name}";
+				bot.editMessage(msg.message.chat, msg.message.id, text);
+			}
+		}
+		else if(!communism)
 		{
 		}
 		else if(strcmp(msg.action, "JOIN / LEAVE") == 0)
@@ -279,6 +306,23 @@ while(true) try
 						communists: communists
 					};
 				}
+			}
+		}
+		else if(checkCommand(msg.text, "/request", &arg))
+		{
+			var amount = strtod!double(arg, NULL);
+			amount = cast<int>(amount * 100);
+
+			if(amount <= 0 || amount > MAX_COMMUNISM)
+			{
+				msg.reply("Invalid amount: ${amount / 100f}€");
+			}
+			else
+			{
+				var keyboard = new InlineKeyboard(1);
+				keyboard.addButton(0, "PAY", "pay $amount ${msg.senderId}");
+
+				msg.reply("${msg.sender} requests ${amount / 100f}€", undefined, keyboard);
 			}
 		}
 		else if(checkCommand(msg.text, "/pay"))
