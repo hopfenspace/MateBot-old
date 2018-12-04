@@ -1,4 +1,4 @@
-const MAX_COMMUNISM = 50;
+const MAX_COMMUNISM = 5000;
 const STATE_FILE = "state.json";
 const LOG_FILE = "transactions.log";
 const BOT_TOKEN = "<bot token here>";
@@ -59,7 +59,7 @@ function saveState()
 }
 function createTransaction(user, diff, reason)
 {
-	fputs("${user.id} (${user.name}) : $diff€: $reason\n", logFd);
+	fputs("${user.id} (${user.name}) : ${diff / 100f}€: $reason\n", logFd);
 	fflush(logFd);
 	user.balance += diff;
 }
@@ -205,14 +205,14 @@ while(true) try
 		var arg;
 		if(checkCommand(msg.text, "/drink"))
 		{
-			createTransaction(accounts[msg.senderId], -1, "drink");
+			createTransaction(accounts[msg.senderId], -100, "drink");
 
 			msg.reply("OK, enjoy your drink!");
 			saveState();
 		}
 		else if(checkCommand(msg.text, "/balance"))
 		{
-			msg.reply("Your balance is: ${accounts[msg.senderId].balance}€");
+			msg.reply("Your balance is: ${accounts[msg.senderId].balance / 100f}€");
 		}
 		else if(checkCommand(msg.text, "/blame"))
 		{
@@ -241,13 +241,15 @@ while(true) try
 			{
 				var comment = NULL;
 				var amount = strtod!double(arg, &comment);
-				if(amount < 0 || amount > MAX_COMMUNISM
-					|| isnan(amount) || isinf(amount))
+				amount = cast<int>(amount * 100);
+
+				if(amount <= 0 || amount > MAX_COMMUNISM)
 				{
-					msg.reply("Invalid amount: $amount");
+					msg.reply("Invalid amount: ${amount / 100f}€");
 				}
 				else
 				{
+
 					var communists = new List();
 					communists.add(msg.senderId);
 
@@ -263,7 +265,7 @@ while(true) try
 
 					var text = "Everyone who wants to join or leave ${msg.sender}' "
 							"communism can now click JOIN / LEAVE"
-						"\nAmount: ${amount}€"
+						"\nAmount: ${amount / 100f}€"
 						"\nDescription: $comment";
 
 					msg.reply("$text\nCommunists: ${msg.sender}", undefined, keyboard);
