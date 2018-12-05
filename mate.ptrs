@@ -197,7 +197,11 @@ while(true) try
 		else if(strcmp(msg.action, "OK") == 0)
 		{
 			var count = communism.communists.length;
-			var split = cast<float>communism.amount / cast<float>count;
+			var split = communism.amount / count;
+
+			// If we cant split the amount equally everyone pays 1 cent more
+			if(communism.amount % count != 0)
+				split++;
 
 			var ids = communism.communists;
 			var text = "";
