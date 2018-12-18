@@ -214,8 +214,8 @@ while(true) try
 
 			var creator = accounts[communism.creator];
 			createTransaction(creator, communism.amount, "communism");
-			text = "$text payed $split€"
-				"\n${creator.name} received ${communism.amount}€"
+			text = "$text payed ${split / 100f}€"
+				"\n${creator.name} received ${communism.amount / 100f}€"
 				"\nDescription: ${communism.comment}";
 
 			saveState();
