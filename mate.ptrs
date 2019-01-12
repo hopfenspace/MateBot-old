@@ -2,6 +2,7 @@ const MAX_COMMUNISM = 5000;
 const STATE_FILE = "state.json";
 const LOG_FILE = "transactions.log";
 const BOT_TOKEN = "<bot token here>";
+const GROUP_ID = 0;
 
 
 
@@ -120,7 +121,14 @@ while(true) try
 {
 	var msg = bot.getUpdate();
 
-	if(msg instanceof CallbackQuery)
+	if(msg.chat != GROUP_ID)
+	{
+		if(msg instanceof MessageUpdate)
+			msg.reply("Sorry, I only answer messages in the main group!");
+		else
+			msg.answer("Invalid chat!");
+	}
+	else if(msg instanceof CallbackQuery)
 	{
 		createUser(msg.senderId, msg.sender);
 
