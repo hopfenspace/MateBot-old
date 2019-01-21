@@ -12,11 +12,13 @@ const SEEK_END = 2;
 
 import List from "libs/list.ptrs";
 import Map from "libs/map.ptrs";
+import setTimeout from "libs/timeout.ptrs";
 import json_encode, json_decode from "libs/json.ptrs";
 import Telegram, MessageUpdate, InlineKeyboard, CallbackQuery from "libs/telegram.ptrs";
 
 var accounts;
 var communism = false;
+var bot = new Telegram(BOT_TOKEN);
 var logFd = fopen(LOG_FILE, "a+");
 
 scoped
@@ -115,8 +117,12 @@ function deleteCommunism()
 	delete communism;
 	communism = false;
 }
+function deleteMessage(id)
+{
+	puts("chat = $GROUP_ID, id = $id");
+	bot.deleteMessage(GROUP_ID, id);
+}
 
-var bot = new Telegram(BOT_TOKEN);
 while(true) try
 {
 	var msg = bot.getUpdate();
@@ -333,6 +339,20 @@ while(true) try
 
 				msg.reply("${msg.sender} requests ${amount / 100f}€", undefined, keyboard);
 			}
+		}
+		else if(checkCommand(msg.text, "/schroedinger"))
+		{
+			var sum = 0;
+			foreach(_, user in accounts)
+			{
+				sum += user.balance;
+			}
+
+			var id = msg.reply("Theoretically the total debt would be ${sum / 100f}€"
+				", but telling you this would mean someone implemented a command to calculate this."
+				" So let's just assume this answer never existed, it's Schrödingers answer now!");
+
+			setTimeout(deleteMessage, 5000, id);
 		}
 		else if(checkCommand(msg.text, "/pay"))
 		{
