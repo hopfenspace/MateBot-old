@@ -121,14 +121,7 @@ while(true) try
 {
 	var msg = bot.getUpdate();
 
-	if(msg.chat != GROUP_ID)
-	{
-		if(msg instanceof MessageUpdate)
-			msg.reply("Sorry, I only answer messages in the main group!");
-		else
-			msg.answer("Invalid chat!");
-	}
-	else if(msg instanceof CallbackQuery)
+	if(msg instanceof CallbackQuery && msg.senderId in accounts)
 	{
 		createUser(msg.senderId, msg.sender);
 
@@ -236,6 +229,10 @@ while(true) try
 			bot.editMessage(msg.message.chat, msg.message.id, "Communism canceled");
 			deleteCommunism();
 		}
+	}
+	else if(msg instanceof MessageUpdate && msg.chat != GROUP_ID)
+	{
+		msg.reply("Sorry, I only answer messages in the main group!");
 	}
 	else if(msg instanceof MessageUpdate)
 	{
